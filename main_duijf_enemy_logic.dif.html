@@ -1,0 +1,37 @@
+47a48
+> 		,{name : "duifmeneer",type : "audio",src : "data/audio/",	channel : 0	}
+524c525
+<         this.setVelocity(1, 6);
+---
+>         this.setVelocity(1, 8);
+529a531,533
+> 
+>         // strength
+>         this.strength = 3;
+540c544,552
+< 	 	    me.audio.play("duif", false);
+---
+> 			this.strength--;
+> 			if (this.strength <= 1) {
+> 	        	this.setVelocity(2, 10);
+> 			}
+> 			if (this.strength > 0) {
+> 	 	    	me.audio.play("duifmeneer", false);
+> 			} else {
+> 	 	    	me.audio.play("duif", false);
+> 			}
+542,543c554,557
+< 				this.alive = false;
+< 				me.game.remove(this);
+---
+> 				if (this.strength <= 0) {
+> 					this.alive = false;
+> 					me.game.remove(this);
+> 				}
+565c579,582
+<             this.doWalk(this.walkLeft);
+---
+> 	        this.doWalk(this.walkLeft);
+> 			if (this.strength < 3 && Math.random() < 0.01) {
+> 				this.doJump();
+> 			}
