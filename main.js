@@ -1,7 +1,7 @@
 // debug
-//me.debug.renderHitBox = true;
-//me.debug.displayFPS = true;
-//me.debug.renderDirty = true;
+me.debug.renderHitBox = true;
+me.debug.displayFPS = true;
+me.debug.renderDirty = true;
 
 
 // game resources
@@ -21,6 +21,7 @@ var g_ressources=
 		,{name : "spinning_coin_gold",type : "image",src : "data/sprite/spinning_coin_gold.png"}
 		// the duif spritesheet
 		,{name : "duif",type : "image",	src : "data/sprite/duif.png"}
+		,{name : "superduif",type : "image",	src : "data/sprite/superduif.png"}
 		// pin
 		,{name : "pin",type : "image",src : "data/sprite/pin.png"}
 		// arnol
@@ -93,6 +94,7 @@ var jsApp	= {
 		me.entityPool.add("CoinEntity", CoinEntity);
         me.entityPool.add("ArnolEnemyEntity", ArnolEnemyEntity);
         me.entityPool.add("DuifEnemyEntity", DuifEnemyEntity);
+        me.entityPool.add("SuperDuifEnemyEntity", SuperDuifEnemyEntity);
         me.entityPool.add("Pinentity", PinEntity);
         me.entityPool.add("Lampentity", LampEntity);
         me.entityPool.add("Heartentity", HeartEntity);
@@ -319,37 +321,6 @@ var CoinEntity = me.CollectableEntity.extend({
 
 /*****************************/
 /*							*/
-/*		a Duif entity		*/
-/*							*/
-/*****************************/
-
-/*
-var DuifEntity = me.CollectableEntity.extend({
-    // extending the init function is not mandatory
-    // unless you need to add some extra initialization
-    init: function(x, y, settings) {
-        // call the parent constructor
-        this.parent(x, y, settings);
-    },
- 
-    // this function is called by the engine, when
-    // an object is touched by something (here collected)
-    onCollision: function() {
-	    // do something when collide
-	    me.audio.play("duif");
-	    // give some score
-	    me.game.HUD.updateItemValue("score", 1);
-	    // make sure it cannot be collected "again"
-	    this.collidable = false;
-	    // remove it
-	    me.game.remove(this);
-    }
-});
-
-*/
-
-/*****************************/
-/*							*/
 /*		a Pin entity		*/
 /*							*/
 /*****************************/
@@ -505,6 +476,89 @@ var DuifEnemyEntity = me.ObjectEntity.extend({
         // define this here instead of tiled
         settings.image = "duif";
         settings.spritewidth = 32;
+ 
+        // call the parent constructor
+        this.parent(x, y, settings);
+ 
+        this.startX = x;
+        this.endX = x + settings.width - settings.spritewidth;
+        // size of sprite
+        
+        // make him start from the right
+        this.pos.x = x + settings.width - settings.spritewidth;
+        
+        this.walkLeft = true;
+ 
+        // walking & jumping speed
+        this.setVelocity(1, 6);
+ 
+        // make it collidable
+        this.collidable = true;
+        // make it a enemy object
+        this.type = me.game.ENEMY_OBJECT;
+ 
+    },
+ 
+    // call by the engine when colliding with another object
+    // obj parameter corresponds to the other object (typically the player) touching this one
+    onCollision: function(res, obj) {
+		me.audio.play("duif", false);
+        // res.y >0 means touched by something on the bottom
+        // which mean at top position for this one
+        
+        if ((res.y > 0) && ! this.jumping) {
+        //if (this.alive && (res.y > 0) && obj.jumping) {
+			this.flicker(10, function(){
+				this.alive = false;
+				me.game.remove(this);
+			});
+        }
+    	
+    	
+    },
+ 
+    // manage the enemy movement
+    update: function() {
+        // do nothing if not visible
+        if (!this.visible)
+            return false;
+        
+        this.vel.x = 0;
+        
+        if (this.alive) {
+            if (this.walkLeft && this.pos.x <= this.startX) {
+                this.walkLeft = false;
+            } else if (!this.walkLeft && this.pos.x >= this.endX) {
+                this.walkLeft = true;
+            }
+ 	        this.doWalk(this.walkLeft);
+        } else {
+            this.vel.x = 0;
+        }
+         
+        // check and update movement
+        this.updateMovement();
+         
+        // update animation if necessary
+        if (this.vel.x!=0 || this.vel.y!=0) {
+            // update objet animation
+            this.parent(this);
+            return true;
+        }
+        return false;
+    }
+});
+
+
+/* --------------------------
+an enemy Entity -  SuperDuif
+------------------------ */
+
+var SuperDuifEnemyEntity = me.ObjectEntity.extend({
+    init: function(x, y, settings) {
+        // define this here instead of tiled
+        settings.image = "superduif";
+        settings.spritewidth = 63;
  
         // call the parent constructor
         this.parent(x, y, settings);
