@@ -1,18 +1,19 @@
 // debug
-me.debug.renderHitBox = true;
-me.debug.displayFPS = true;
-me.debug.renderDirty = true;
+//me.debug.renderHitBox = true;
+//me.debug.displayFPS = true;
+//me.debug.renderDirty = true;
 
 
 // game resources
 var g_ressources= 
 	[// our level tileset
 		 {name : "area01_level_tiles",type : "image",	src : "data/area01_tileset/area01_level_tiles.png"}
+		 ,{name : "metatiles32x32",type : "image",	src : "data/area01_tileset/metatiles32x32.png"}
 		// our levels
 		,{name : "area01",type : "tmx",	src : "data/area01.tmx"}
 		,{name : "area02",type : "tmx",src : "data/area02.tmx"}
 		// the main player spritesheet
-		,{name : "gripe_run_right",	type : "image",	src : "data/sprite/gripe_run_right.png"}
+		,{name : "gripe_run_right",	type : "image",	src : "data/sprite/colin.png"}
 		// the parallax background
 		,{name : "area01_bkg0",type : "image",src : "data/area01_parallax/area01_bkg0_centrum.png"}
 		,{name : "area01_bkg1",type : "image",src : "data/area01_parallax/area01_bkg1.png"}
@@ -179,6 +180,7 @@ window.onReady(function()
 var PlayerEntity = me.ObjectEntity.extend({
 	// constructor
 	init: function(x, y, settings){
+		
 		//call constructor
 		this.parent(x, y, settings);
 		//set walking en jumping speed
@@ -234,23 +236,25 @@ var PlayerEntity = me.ObjectEntity.extend({
 	        // if we collide with an enemy
 	        if (res.obj.type == me.game.ENEMY_OBJECT) {
 	            // check if we jumped on it
-	            if ((res.y > 0) && ! this.jumping) {
+	            var isSafe = true;
+	            if ((res.y > 0) && !this.jumping) {
+	            	isSafe = false
 	                // bounce
 	                me.audio.play("stomp");
 	                this.forceJump();
-	            }else if(!this.flickering){
+	                setTimeout(function(){isSafe=true},500);
+	            }else if(!this.flickering && isSafe === true){
                     this.touch()
 	            } 
 	        }
 	    }
-	    
 		//fall of cliff
 		if (this.pos.y >= 900){
 			me.game.viewport.fadeIn("#000", 500);
 			this.pos.x = this.startX;
 			this.pos.y = this.startY-32;
+			this.resetParallax();
 		}
-		
 		//update animation if necessary
 		if(this.vel.x!=0 || this.vel.y!=0){
 			//update object animation
@@ -268,14 +272,15 @@ var PlayerEntity = me.ObjectEntity.extend({
                 me.game.remove(this)
             });
             me.game.HUD.reset("energy");
-            me.state.current().onGameOver()
+            me.state.current().onGameOver();
+        	this.resetParallax();
         } else {
             // me.audio.play("Player_Dies");
             this.flicker(30, function() {
+            	this.resetParallax();
                 me.game.HUD.reset("energy");
 			    this.pos.x = this.startX;
 			    this.pos.y = this.startY;
-                me.levelDirector.reloadLevel();
                 me.game.viewport.fadeOut("#000", 15);
             })
         }       
@@ -288,6 +293,13 @@ var PlayerEntity = me.ObjectEntity.extend({
             //me.audio.play("hurt", false);
             this.flicker(me.sys.fps * 2)
         }
+    },resetParallax: function(){
+    	parallaxEntity = me.game.currentLevel.mapLayers[0];
+		//then go through all the layers it contains and reset the baseOffset variable
+		for ( var i = 0, layer; layer = parallaxEntity.parallaxLayers[i++];) {
+			// calculate the new basoffset
+			layer.baseOffset = 0;
+		}
     }
 });
 
@@ -350,7 +362,7 @@ var LampEntity = me.CollectableEntity.extend({init: function(a, c, b) {
 },onDestroyEvent: function() {
 	// todo play audio
 	if(me.game.HUD){
-	    me.game.HUD.updateItemValue("score", 1);
+	    me.game.HUD.updateItemValue("score", 250);
 	}
 }});
 
@@ -475,8 +487,8 @@ var DuifEnemyEntity = me.ObjectEntity.extend({
     init: function(x, y, settings) {
         // define this here instead of tiled
         settings.image = "duif";
-        settings.spritewidth = 32;
- 
+        settings.spritewidth = 43;
+        
         // call the parent constructor
         this.parent(x, y, settings);
  
@@ -486,45 +498,40 @@ var DuifEnemyEntity = me.ObjectEntity.extend({
         
         // make him start from the right
         this.pos.x = x + settings.width - settings.spritewidth;
-        
         this.walkLeft = true;
- 
         // walking & jumping speed
         this.setVelocity(1, 6);
- 
         // make it collidable
         this.collidable = true;
         // make it a enemy object
         this.type = me.game.ENEMY_OBJECT;
- 
+		this.addAnimation("lopen", [0,1,2,3]);
+		this.addAnimation("pikken", [4,5,6]);
+        this.setCurrentAnimation('lopen');
     },
- 
     // call by the engine when colliding with another object
     // obj parameter corresponds to the other object (typically the player) touching this one
     onCollision: function(res, obj) {
 		me.audio.play("duif", false);
         // res.y >0 means touched by something on the bottom
         // which mean at top position for this one
-        
         if ((res.y > 0) && ! this.jumping) {
-        //if (this.alive && (res.y > 0) && obj.jumping) {
 			this.flicker(10, function(){
 				this.alive = false;
 				me.game.remove(this);
+				if(me.game.HUD){
+				    me.game.HUD.updateItemValue("score", 100);
+				}
 			});
         }
-    	
-    	
     },
- 
     // manage the enemy movement
     update: function() {
         // do nothing if not visible
-        if (!this.visible)
+        if (!this.visible){
             return false;
-        
+        }
         this.vel.x = 0;
-        
         if (this.alive) {
             if (this.walkLeft && this.pos.x <= this.startX) {
                 this.walkLeft = false;
@@ -535,16 +542,23 @@ var DuifEnemyEntity = me.ObjectEntity.extend({
         } else {
             this.vel.x = 0;
         }
-         
+		if (this.isCurrentAnimation("pikken")){
+		    this.setVelocity(0.25);
+		}else{
+		    this.setVelocity(1);
+		}
+		if (Math.random() < 0.01) {
+	    	this.setCurrentAnimation("pikken", "lopen");
+		}
         // check and update movement
         this.updateMovement();
-         
         // update animation if necessary
         if (this.vel.x!=0 || this.vel.y!=0) {
-            // update objet animation
+            // update object animation
             this.parent(this);
             return true;
         }
+        
         return false;
     }
 });
@@ -661,13 +675,13 @@ var HUDScoreObject = me.HUD_Item.extend({
         this.parent(x, y);
         // create a font
         this.font = new me.BitmapFont("32x32_font_white", 32);
-	    this.lampIcon = me.loader.getImage("hud_lamp")
+	    //this.lampIcon = me.loader.getImage("hud_lamp")
     },
     /* -----
     draw our score
     ------ */
     draw: function(b, x, y) {
-        b.drawImage(this.lampIcon, this.pos.x + x, this.pos.y + y);
+       // b.drawImage(this.lampIcon, this.pos.x + x, this.pos.y + y);
         this.font.draw(b, this.value, this.pos.x + x, this.pos.y + y);
     }
  

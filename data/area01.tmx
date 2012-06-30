@@ -36,6 +36,7 @@
  </tileset>
  <layer name="Parallax_layer1" width="250" height="30">
   <properties>
+   <property name="" value=""/>
    <property name="imagesrc" value="area01_bkg0"/>
   </properties>
   <data encoding="base64">
@@ -44,6 +45,7 @@
  </layer>
  <layer name="Parallax_layer2" width="250" height="30">
   <properties>
+   <property name="" value=""/>
    <property name="imagesrc" value="area01_bkg1"/>
   </properties>
   <data encoding="base64">
@@ -52,6 +54,7 @@
  </layer>
  <layer name="Parallax_layer3" width="250" height="30">
   <properties>
+   <property name="" value=""/>
    <property name="imagesrc" value="area01_bkg2"/>
   </properties>
   <data encoding="base64">
@@ -67,7 +70,7 @@
   <object name="mainPlayer" x="96" y="864" width="32" height="32">
    <properties>
     <property name="image" value="gripe_run_right"/>
-    <property name="spritewidth" value="64"/>
+    <property name="spritewidth" value="50"/>
    </properties>
   </object>
   <object name="me.LevelEntity" x="7968" y="768" width="32" height="128">
