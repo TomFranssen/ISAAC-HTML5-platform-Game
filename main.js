@@ -1,8 +1,24 @@
-// debug
-//me.debug.renderHitBox = true;
-//me.debug.displayFPS = true;
-//me.debug.renderDirty = true;
+// utility function to get query string
+function getParameterByName(name){
+  name = name.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
+  var regexS = "[\\?&]" + name + "=([^&#]*)";
+  var regex = new RegExp(regexS);
+  var results = regex.exec(window.location.search);
+  if(results == null)
+    return "";
+  else
+    return decodeURIComponent(results[1].replace(/\+/g, " "));
+}
 
+var isDebug = getParameterByName('debug')
+,lang = getParameterByName('lang');
+
+
+if(isDebug){
+	me.debug.renderHitBox = true;
+	me.debug.displayFPS = true;
+	//me.debug.renderDirty = true;
+}
 
 // game resources
 var g_ressources= 
@@ -12,6 +28,7 @@ var g_ressources=
 		// our levels
 		,{name : "area01",type : "tmx",	src : "data/area01.tmx"}
 		,{name : "area02",type : "tmx",src : "data/area02.tmx"}
+		,{name : "game-end",type : "tmx",src : "data/game-end.tmx"}
 		// the main player spritesheet
 		,{name : "gripe_run_right",	type : "image",	src : "data/sprite/colin.png"}
 		// the parallax background
@@ -51,6 +68,7 @@ var g_ressources=
 		,{name : "wilhelmscream",type : "audio",src : "data/audio/",	channel : 0	}
 		// title screen
 		,{name : "title_screen",type : "image",	src : "data/GUI/title_screen.png"}
+		,{name : "title_screen_en",type : "image",	src : "data/GUI/title_screen_en.png"}
 	];
 
 var jsApp	= {
@@ -64,7 +82,7 @@ var jsApp	= {
 		// init the video
 		if (!me.video.init('jsapp', 640, 480, false, 1.0))
 		{
-			alert("Sorry but your browser does not support html 5 canvas. Please try with another one!");
+			alert("Sorry but your browser does not support html 5 canvas. Please try the Chrome browser!");
          return;
 		}
 		// initialize the "audio"
@@ -73,6 +91,10 @@ var jsApp	= {
 		me.loader.onload = this.loaded.bind(this);
 		// set all ressources to be loaded
 		me.loader.preload(g_ressources);
+		
+        // define own loading screen
+        me.state.set(me.state.LOADING, new CustomLoadingScreen());
+		
 		// load everything & display a loading screen
 		me.state.change(me.state.LOADING);
 	},
@@ -99,6 +121,7 @@ var jsApp	= {
         me.entityPool.add("Pinentity", PinEntity);
         me.entityPool.add("Lampentity", LampEntity);
         me.entityPool.add("Heartentity", HeartEntity);
+        me.entityPool.add("game_end_msg", GameEndMessage);
         //me.entityPool.add("gameover", gameOverMessage);
         me.entityPool.add("lets_go_msg", LetsGoMessage);
 		// enable the keyboard
@@ -106,7 +129,7 @@ var jsApp	= {
 		me.input.bindKey(me.input.KEY.DOWN,		"down");
 		me.input.bindKey(me.input.KEY.LEFT,		"left");
 		me.input.bindKey(me.input.KEY.RIGHT,	"right");
-		me.input.bindKey(me.input.KEY.X,		"jump", true);
+		me.input.bindKey(me.input.KEY.SPACE,		"jump", true);
       	// start the game 
 		me.state.change(me.state.MENU);
         me.state.onPause = function() {
@@ -186,8 +209,8 @@ var PlayerEntity = me.ObjectEntity.extend({
 		//set walking en jumping speed
 		this.setVelocity(4,15);
 		
-		this.startX = x;
-		this.startY = y;
+		this.startX = 5;
+		this.startY = 5;
 		
 		// adjust bounding box
 		this.updateColRect(8,48,-1,0);
@@ -235,6 +258,7 @@ var PlayerEntity = me.ObjectEntity.extend({
 	    if (res && me.game.HUD) {
 	        // if we collide with an enemy
 	        if (res.obj.type == me.game.ENEMY_OBJECT) {
+	        	
 	            // check if we jumped on it
 	            var isSafe = true;
 	            if ((res.y > 0) && !this.jumping) {
@@ -244,15 +268,16 @@ var PlayerEntity = me.ObjectEntity.extend({
 	                this.forceJump();
 	                setTimeout(function(){isSafe=true},500);
 	            }else if(!this.flickering && isSafe === true){
-                    this.touch()
+                    this.touch();
 	            } 
 	        }
 	    }
 		//fall of cliff
-		if (this.pos.y >= 900){
+		if (this.pos.y >= 980){
+			console.log('val van cluiff');
 			me.game.viewport.fadeIn("#000", 500);
 			this.pos.x = this.startX;
-			this.pos.y = this.startY-32;
+			this.pos.y = this.startY;
 			this.resetParallax();
 		}
 		//update animation if necessary
@@ -263,6 +288,15 @@ var PlayerEntity = me.ObjectEntity.extend({
 		}
 		return false;
 		
+    },touch: function() {
+        me.audio.play("wilhelmscream");
+        me.game.HUD.updateItemValue("energy", -1);
+        if (me.game.HUD.getItemValue("energy") == 0) {
+            this.die();
+        } else {
+            //me.audio.play("hurt", false);
+            this.flicker(me.sys.fps * 2)
+        }
 	},die: function() {
         this.alive = false;
         this.forceJump();
@@ -284,15 +318,6 @@ var PlayerEntity = me.ObjectEntity.extend({
                 me.game.viewport.fadeOut("#000", 15);
             })
         }       
-    },touch: function() {
-        me.audio.play("wilhelmscream");
-        me.game.HUD.updateItemValue("energy", -1);
-        if (me.game.HUD.getItemValue("energy") == 0) {
-            this.die()
-        } else {
-            //me.audio.play("hurt", false);
-            this.flicker(me.sys.fps * 2)
-        }
     },resetParallax: function(){
     	parallaxEntity = me.game.currentLevel.mapLayers[0];
 		//then go through all the layers it contains and reset the baseOffset variable
@@ -358,7 +383,7 @@ var LampEntity = me.CollectableEntity.extend({init: function(a, c, b) {
     b.image = "lamp";
     b.spritewidth = 32;
     this.parent(a, c, b);
-    this.updateColRect(3, 43, 9, 55);
+    this.updateColRect(3, 26, 3, 37);
 },onDestroyEvent: function() {
 	// todo play audio
 	if(me.game.HUD){
@@ -744,6 +769,9 @@ var gameOverMessage = me.SpriteObject.extend({
         this.tween = new me.Tween(this.pos).to({y: 40}, 3000).onComplete(b);
         this.tween.easing(me.Tween.Easing.Bounce.EaseOut);
         this.tween.start()
+    },draw: function(a) {
+        this.pos.x = me.game.viewport.pos.x + ((me.game.viewport.width - this.image.width) / 2);
+        this.parent(a);
     }
 });
 
@@ -794,7 +822,8 @@ var TitleScreen = me.ScreenObject.extend({
         this.scrollerfont = null;
         this.scrollertween = null;
  
-        this.scroller = "HELP DE ISAAC COLLEGA NAAR ZIJN WERK. MAAR KIJK UIT! EINDHOVEN ZIT VOL GEVAREN!";
+        //this.scroller = "HELP! COLLIN HEEFT ZICH VERSLAPEN! HELP HEM NAAR ZIJN WERK TE KOMEN!!!";
+        this.scroller = "";
         this.scrollerpos = 600;
         
     },
@@ -802,8 +831,11 @@ var TitleScreen = me.ScreenObject.extend({
     // reset function
     onResetEvent: function() {
         if (this.title == null) {
-            // init stuff if not yet done
-            this.title = me.loader.getImage("title_screen");
+        	if(lang === "en"){
+	            this.title = me.loader.getImage("title_screen_en");
+        	}else{
+	            this.title = me.loader.getImage("title_screen");
+        	}
             
             // font to display the menu items
             this.font = new me.BitmapFont("32x32_font", 32);
@@ -851,8 +883,8 @@ var TitleScreen = me.ScreenObject.extend({
     // draw function
     draw: function(context) {
 		context.drawImage(this.title, 0, 0);
-        this.font.draw(context, "PRESS ENTER TO PLAY", 20, 240);
-        this.scrollerfont.draw(context, this.scroller, this.scrollerpos, 440);
+        //this.font.draw(context, "PRESS ENTER TO PLAY", 20, 440);
+        this.scrollerfont.draw(context, this.scroller, this.scrollerpos, 240);
     },
  
     // destroy function
@@ -863,6 +895,124 @@ var TitleScreen = me.ScreenObject.extend({
     }
  
 });
+
+
+var GameEndMessage = me.InvisibleEntity.extend({init: function(a, c, b) {
+        settings = {};
+        settings.width = 64;
+        settings.height = 64;
+        this.parent(a, c, settings);
+        this.collidable = false;
+        this.yoff = -270;
+        this.tween = new me.Tween(this).to({yoff: 50}, 2000).onComplete(this.animDone.bind(this));
+        this.tween.easing(me.Tween.Easing.Bounce.EaseOut);
+        this.animover = false;
+        this.font = new me.Font('arial', 32, 'white');
+        this.font.set("left");
+        me.input.bindKey(me.input.KEY.ENTER, "enter", true);
+        this.tween.start()
+		me.game.disableHUD();
+    },update: function() {
+        if (this.animover && me.input.isKeyPressed("enter")) {
+            me.state.current().onGameEnd();
+            me.input.unbindKey(me.input.KEY.ENTER);
+            me.game.disableHUD();
+            me.state.change(me.state.CREDITS)
+        }
+        return true
+    },animDone: function() {
+        this.animover = true
+    },draw: function(a) {
+        a.fillStyle = "#fff";
+        this.font.draw(a, "GEFELICITEERD", 90, this.yoff + 10);
+        this.font.draw(a, "JE HEBT HET GEHAALD", 90, this.yoff + 50);
+        this.font.draw(a, "COLLIN IS OP TIJD OP ZIJN WERK AANGEKOMEN", 90, this.yoff + 80);
+        //this.font.draw(a, "COME BACK FOR", 90, this.yoff + 120);
+        //this.font.draw(a, "MORE LEVEL SOON", 90, this.yoff + 150);
+        if (this.animover == true) {
+            this.font.draw(a, "PRESS <ENTER>", 130, this.yoff + 200)
+        }
+    }});
+
+
+// create a custom loading screen
+var CustomLoadingScreen = me.ScreenObject.extend({
+   // constructor
+   init: function() {
+      // pass true to the parent constructor
+      // as we draw our progress bar in the draw function
+      this.parent(true);
+      // a font logo
+      
+      this.logo = new me.Font('arial', 32, 'white');
+      // flag to know if we need to refresh the display
+      this.invalidate = false;
+      // load progress in percent
+      this.loadPercent = 0;
+      // setup a callback
+      me.loader.onProgress = this.onProgressUpdate.bind(this);
+
+   },
+
+   // will be fired by the loader each time a resource is loaded
+   onProgressUpdate: function(progress){
+      this.loadPercent = progress;
+      this.invalidate = true;
+   },
+
+  
+   // make sure the screen is only refreshed on load progress 
+   update: function() {
+      if (this.invalidate===true)
+      {
+         // clear the flag
+         this.invalidate = false;
+         // and return true
+         return true;
+      }
+      // else return false
+      return false;
+   },
+
+   // on destroy event
+   onDestroyEvent : function (){
+      // "nullify" all fonts
+      this.logo = null;
+   },
+
+   //	draw function
+   draw : function(context){
+      // clear the screen
+      me.video.clearSurface (context, "black");
+
+      // measure the logo size
+      logo_width = this.logo.measureText(context,"LOADING").width;
+
+      // draw our text somewhere in the middle
+      this.logo.draw(context, 
+                     "LOADING", 
+                     ((context.canvas.width - logo_width) / 2), 
+                     (context.canvas.height + 60) / 2);
+  
+      // display a progressive loading bar
+      var width = Math.floor(this.loadPercent * context.canvas.width);
+    
+      // draw the progress bar
+      context.strokeStyle = "silver";
+      context.strokeRect(0, (context.canvas.height / 2) + 40, context.canvas.width, 6);
+      context.fillStyle = "#009ddc";
+      context.fillRect(2, (context.canvas.height / 2) + 42, width-4, 2);
+   },
+});
+
+
+
+
+
+
+
+
+
 
 
 
