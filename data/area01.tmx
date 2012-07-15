@@ -204,7 +204,6 @@
  </objectgroup>
  <objectgroup color="#a40002" name="Enemy Entities" width="250" height="15">
   <object name="ArnolEnemyEntity" x="7104" y="384" width="864" height="32"/>
-  <object name="DuifEnemyEntity" x="224" y="384" width="384" height="32"/>
   <object name="DuifEnemyEntity" x="1120" y="288" width="96" height="32"/>
   <object name="DuifEnemyEntity" x="928" y="384" width="192" height="32"/>
   <object name="DuifEnemyEntity" x="1280" y="96" width="64" height="32"/>
@@ -214,7 +213,6 @@
   <object name="SuperDuifEnemyEntity" x="2432" y="384" width="256" height="32"/>
   <object name="SuperDuifEnemyEntity" x="6176" y="288" width="320" height="96"/>
   <object name="DuifEnemyEntity" x="384" y="384" width="384" height="32"/>
-  <object name="DuifEnemyEntity" x="512" y="384" width="384" height="32"/>
  </objectgroup>
  <objectgroup name="Action Entities" width="250" height="15">
   <object name="lets_go_msg" x="64" y="0" width="143" height="205"/>
